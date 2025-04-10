@@ -59,3 +59,64 @@ async def test_create_starlette_app() -> None:
             response = await session.list_prompts()
             assert len(response.prompts) == 1
             assert response.prompts[0].name == "prompt1"
+
+
+async def test_sse_server_with_valid_token() -> None:
+    """Test SSE server allows requests with a valid token."""
+    mcp_server: Server[object] = Server("prompt-server")
+
+    @mcp_server.list_prompts()  # type: ignore[no-untyped-call,misc]
+    async def list_prompts() -> list[types.Prompt]:
+        return [types.Prompt(name="prompt1")]
+
+    app = create_starlette_app(mcp_server, allow_origins=["*"], auth_token="valid-token")
+
+    config = uvicorn.Config(app, port=0, log_level="info")
+    server = BackgroundServer(config)
+    async with server.run_in_background():
+        mcp_url = f"{server.url}/sse"
+        headers = {"Authorization": "Bearer valid-token"}
+        async with sse_client(url=mcp_url, headers=headers) as streams, ClientSession(*streams) as session:
+            await session.initialize()
+            response = await session.list_prompts()
+            assert len(response.prompts) == 1
+            assert response.prompts[0].name == "prompt1"
+
+
+async def test_sse_server_with_invalid_token() -> None:
+    """Test SSE server rejects requests with an invalid token."""
+    mcp_server: Server[object] = Server("prompt-server")
+
+    @mcp_server.list_prompts()  # type: ignore[no-untyped-call,misc]
+    async def list_prompts() -> list[types.Prompt]:
+        return [types.Prompt(name="prompt1")]
+
+    app = create_starlette_app(mcp_server, allow_origins=["*"], auth_token="valid-token")
+
+    config = uvicorn.Config(app, port=0, log_level="info")
+    server = BackgroundServer(config)
+    async with server.run_in_background():
+        mcp_url = f"{server.url}/sse"
+        headers = {"Authorization": "Bearer invalid-token"}
+        async with sse_client(url=mcp_url, headers=headers) as streams, ClientSession(*streams) as session:
+            with pytest.raises(Exception, match="Unauthorized: Invalid token"):
+                await session.initialize()
+
+
+async def test_sse_server_without_token() -> None:
+    """Test SSE server rejects requests without a token."""
+    mcp_server: Server[object] = Server("prompt-server")
+
+    @mcp_server.list_prompts()  # type: ignore[no-untyped-call,misc]
+    async def list_prompts() -> list[types.Prompt]:
+        return [types.Prompt(name="prompt1")]
+
+    app = create_starlette_app(mcp_server, allow_origins=["*"], auth_token="valid-token")
+
+    config = uvicorn.Config(app, port=0, log_level="info")
+    server = BackgroundServer(config)
+    async with server.run_in_background():
+        mcp_url = f"{server.url}/sse"
+        async with sse_client(url=mcp_url) as streams, ClientSession(*streams) as session:
+            with pytest.raises(Exception, match="Unauthorized: Missing or invalid Authorization header"):
+                await session.initialize()
