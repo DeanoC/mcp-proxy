@@ -114,6 +114,7 @@ Arguments
 | `--env`              | No                         | Additional environment variables to pass to the MCP stdio server | FOO=BAR               |
 | `--pass-environment` | No                         | Pass through all environment variables when spawning the server  | --no-pass-environment |
 | `--allow-origin`     | No                         | Pass through all environment variables when spawning the server  | --allow-cors "\*"     |
+| `--auth-token`       | No                         | Authorization token required for SSE server access               | your-auth-token       |
 
 ### 2.2 Example usage
 
@@ -132,6 +133,9 @@ mcp-proxy --sse-host=0.0.0.0 --sse-port=8080 uvx mcp-server-fetch
 # Start the MCP server behind the proxy with a custom user agent
 # Note that the `--` separator is used to separate the `mcp-proxy` arguments from the `mcp-server-fetch` arguments
 mcp-proxy --sse-port=8080 -- uvx mcp-server-fetch --user-agent=YourUserAgent
+
+# Start the MCP server behind the proxy with an authorization token
+mcp-proxy --sse-port=8080 --auth-token=your-auth-token uvx mcp-server-fetch
 ```
 
 This will start an MCP server that can be connected to at `http://127.0.0.1:8080/sse`
@@ -224,7 +228,7 @@ services:
 
 ```bash
 usage: mcp-proxy [-h] [-H KEY VALUE] [-e KEY VALUE] [--pass-environment | --no-pass-environment] [--sse-port SSE_PORT] [--sse-host SSE_HOST]
-                 [--allow-origin ALLOW_ORIGIN [ALLOW_ORIGIN ...]]
+                 [--allow-origin ALLOW_ORIGIN [ALLOW_ORIGIN ...]] [--auth-token AUTH_TOKEN]
                  [command_or_url] [args ...]
 
 Start the MCP proxy in one of two possible modes: as an SSE or stdio client.
@@ -251,6 +255,8 @@ SSE server options:
   --sse-host SSE_HOST   Host to expose an SSE server on. Default is 127.0.0.1
   --allow-origin ALLOW_ORIGIN [ALLOW_ORIGIN ...]
                         Allowed origins for the SSE server. Can be used multiple times. Default is no CORS allowed.
+  --auth-token AUTH_TOKEN
+                        Authorization token required for SSE server access
 
 Examples:
   mcp-proxy http://localhost:8080/sse
@@ -258,6 +264,7 @@ Examples:
   mcp-proxy --sse-port 8080 -- your-command --arg1 value1 --arg2 value2
   mcp-proxy your-command --sse-port 8080 -e KEY VALUE -e ANOTHER_KEY ANOTHER_VALUE
   mcp-proxy your-command --sse-port 8080 --allow-origin='*'
+  mcp-proxy --sse-port 8080 --auth-token=your-auth-token -- your-command --arg1 value1 --arg2 value2
 ```
 
 ## Testing
